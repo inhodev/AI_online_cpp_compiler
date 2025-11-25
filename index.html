@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI C++ Compiler (Multi-file)</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --text-color: #d4d4d4;
+            --accent-color: #007acc;
+            --error-color: #f48771;
+            --success-color: #89d185;
+            --panel-bg: #252526;
+            --border-color: #3c3c3c;
+            --tab-inactive: #2d2d2d;
+            --tab-active: #1e1e1e;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .editor-section,
+        .output-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* File Tabs */
+        .file-tabs {
+            display: flex;
+            gap: 2px;
+            background-color: var(--panel-bg);
+            padding: 5px 5px 0 5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab {
+            padding: 8px 15px;
+            background-color: var(--tab-inactive);
+            color: #888;
+            cursor: pointer;
+            border-top-left-radius: 3px;
+            border-top-right-radius: 3px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab.active {
+            background-color: var(--tab-active);
+            color: var(--text-color);
+            font-weight: bold;
+        }
+
+        .tab:hover:not(.active) {
+            background-color: #333;
+        }
+
+        .add-tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 10px;
+        }
+
+        .add-tab-btn:hover {
+            color: var(--accent-color);
+        }
+
+        .close-tab {
+            font-size: 12px;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-tab:hover {
+            background-color: #444;
+            color: #fff;
+        }
+
+        textarea {
+            background-color: var(--panel-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            resize: none;
+            flex: 1;
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-color);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        .output-box {
+            background-color: #000;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .error-text {
+            color: var(--error-color);
+        }
+
+        .ai-suggestion {
+            background-color: #2d2d30;
+            border-left: 4px solid var(--accent-color);
+            padding: 15px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .ai-title {
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>AI-Powered C++ Compiler (Multi-file)</h1>
+
+    <div class="container">
+        <div class="editor-section">
+            <div class="file-tabs" id="fileTabs">
+                <!-- Tabs will be injected here -->
+                <button class="add-tab-btn" onclick="addNewFile()">+</button>
+            </div>
+            <textarea id="code" spellcheck="false" oninput="updateCurrentFileContent()"></textarea>
+
+            <label>Standard Input (Stdin)</label>
+            <textarea id="stdin" style="flex: 0 0 80px;" placeholder="Input for your program..."></textarea>
+
+            <div class="controls">
+                <button id="runBtn" onclick="runCode()">Run Code</button>
+            </div>
+        </div>
+
+        <div class="output-section">
+            <label>Output</label>
+            <div id="output" class="output-box"></div>
+
+            <div id="aiPanel" class="ai-suggestion">
+                <span class="ai-title">✨ AI Fix Suggestion</span>
+                <div id="aiContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let files = [
+            {
+                name: "main.cpp",
+                content: `#include <iostream>\n#include "util.h"\n\nint main() {\n    greet("AI Compiler");\n    return 0;\n}`
+            },
+            {
+                name: "util.h",
+                content: `#ifndef UTIL_H\n#define UTIL_H\n#include <string>\n\nvoid greet(std::string name);\n\n#endif`
+            },
+            {
+                name: "util.cpp",
+                content: `#include <iostream>\n#include "util.h"\n\nvoid greet(std::string name) {\n    std::cout << "Hello, " << name << "!" << std::endl;\n}`
+            }
+        ];
+        let activeIndex = 0;
+
+        // UI Elements
+        const tabsContainer = document.getElementById('fileTabs');
+        const codeTextarea = document.getElementById('code');
+        const addBtn = document.querySelector('.add-tab-btn');
+
+        function renderTabs() {
+            // Clear existing tabs (except the add button)
+            const existingTabs = document.querySelectorAll('.tab');
+            existingTabs.forEach(t => t.remove());
+
+            files.forEach((file, index) => {
+                const tab = document.createElement('div');
+                tab.className = `tab ${index === activeIndex ? 'active' : ''}`;
+                tab.onclick = () => switchTab(index);
+
+                const nameSpan = document.createElement('span');
+                nameSpan.innerText = file.name;
+                tab.appendChild(nameSpan);
+
+                // Close button (prevent closing the last file)
+                if (files.length > 1) {
+                    const closeBtn = document.createElement('span');
+                    closeBtn.className = 'close-tab';
+                    closeBtn.innerHTML = '&times;';
+                    closeBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        closeFile(index);
+                    };
+                    tab.appendChild(closeBtn);
+                }
+
+                tabsContainer.insertBefore(tab, addBtn);
+            });
+
+            // Update textarea
+            codeTextarea.value = files[activeIndex].content;
+        }
+
+        function switchTab(index) {
+            activeIndex = index;
+            renderTabs();
+        }
+
+        function updateCurrentFileContent() {
+            files[activeIndex].content = codeTextarea.value;
+        }
+
+        function addNewFile() {
+            const name = prompt("Enter file name (e.g., helper.cpp):");
+            if (name) {
+                // Check duplicate
+                if (files.some(f => f.name === name)) {
+                    alert("File already exists!");
+                    return;
+                }
+                files.push({ name: name, content: "" });
+                activeIndex = files.length - 1;
+                renderTabs();
+            }
+        }
+
+        function closeFile(index) {
+            if (confirm(`Delete ${files[index].name}?`)) {
+                files.splice(index, 1);
+                if (activeIndex >= files.length) {
+                    activeIndex = files.length - 1;
+                }
+                renderTabs();
+            }
+        }
+
+        async function runCode() {
+            const runBtn = document.getElementById('runBtn');
+            const outputDiv = document.getElementById('output');
+            const aiPanel = document.getElementById('aiPanel');
+            const aiContent = document.getElementById('aiContent');
+            const stdin = document.getElementById('stdin').value;
+
+            // Reset UI
+            runBtn.disabled = true;
+            runBtn.innerText = "Running...";
+            outputDiv.innerHTML = "";
+            aiPanel.style.display = "none";
+
+            try {
+                const response = await fetch('http://localhost:3000/compile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codeFiles: JSON.stringify(files), // Send all files
+                        stdin: stdin
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    outputDiv.innerText = data.output;
+                    outputDiv.classList.remove('error-text');
+                } else {
+                    // Show Error
+                    outputDiv.innerText = data.error || "Unknown Error";
+                    outputDiv.classList.add('error-text');
+
+                    // Show AI Suggestion if available
+                    if (data.ai_suggestion) {
+                        aiPanel.style.display = "block";
+                        aiContent.innerText = data.ai_suggestion.explanation;
+
+                        // If AI fixed files, we could optionally update them here
+                        // For now, we just show the explanation
+                    }
+                }
+
+            } catch (err) {
+                outputDiv.innerText = "Network Error: " + err.message;
+                outputDiv.classList.add('error-text');
+            } finally {
+                runBtn.disabled = false;
+                runBtn.innerText = "Run Code";
+            }
+        }
+
+        // Initial Render
+        renderTabs();
+
+    </script>
+
+</body>
+
+</html>
