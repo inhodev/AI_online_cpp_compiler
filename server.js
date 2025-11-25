@@ -9,12 +9,26 @@ const { compileAndRun } = require('./compiler');
 const { analyzeAndFixCode } = require('./ai_service');
 
 const app = express();
-const PORT = 3000;
+
+// 중요: Render는 포트를 환경 변수로 주입하므로 process.env.PORT를 우선 사용해야 합니다.
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// --- [추가된 부분] 프론트엔드 연결 설정 ---
+
+// 1. 정적 파일(index.html 등) 서빙 설정
+app.use(express.static(path.join(__dirname)));
+
+// 2. 루트 경로('/')로 접속 시 index.html 파일 전송
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// ----------------------------------------
 
 // File upload setup (store in 'uploads' temp dir)
 const upload = multer({ dest: 'uploads/' });
