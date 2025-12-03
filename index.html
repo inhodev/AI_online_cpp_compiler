@@ -7,15 +7,16 @@
     <title>AI C++ Compiler (Multi-file)</title>
     <style>
         :root {
-            --bg-color: #1e1e1e;
-            --text-color: #d4d4d4;
-            --accent-color: #007acc;
-            --error-color: #f48771;
-            --success-color: #89d185;
-            --panel-bg: #252526;
-            --border-color: #3c3c3c;
-            --tab-inactive: #2d2d2d;
-            --tab-active: #1e1e1e;
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --accent-color: #FF6B6B;
+            --error-color: #FF4444;
+            --success-color: #00FF88;
+            --panel-bg: #1a1a1a;
+            --border-color: #FF6B6B;
+            --tab-inactive: #333333;
+            --tab-active: #FF6B6B;
+            --shadow: 4px 4px 0px #FF6B6B;
         }
 
         body {
@@ -77,19 +78,21 @@
         }
 
         .tab {
-            padding: 8px 12px;
+            padding: 10px 16px;
             background-color: var(--tab-inactive);
             color: #888;
             cursor: pointer;
-            border-top-left-radius: 3px;
-            border-top-right-radius: 3px;
+            border: 2px solid var(--border-color);
             font-size: 13px;
+            font-weight: bold;
             display: flex;
             align-items: center;
             gap: 8px;
             min-width: 80px;
             max-width: 150px;
             flex-shrink: 0;
+            box-shadow: 2px 2px 0px var(--border-color);
+            transition: all 0.1s;
         }
 
         .tab.active {
@@ -151,13 +154,15 @@
         textarea {
             background-color: var(--panel-bg);
             color: var(--text-color);
-            border: 1px solid var(--border-color);
-            padding: 10px;
-            font-family: 'Consolas', 'Monaco', monospace;
+            border: 3px solid var(--border-color);
+            padding: 15px;
+            font-family: 'Courier New', monospace;
             font-size: 14px;
+            font-weight: bold;
             resize: none;
             flex: 1;
             outline: none;
+            box-shadow: var(--shadow);
         }
 
         textarea:focus {
@@ -172,15 +177,26 @@
         button {
             background-color: var(--accent-color);
             color: white;
-            border: none;
-            padding: 10px 20px;
+            border: 3px solid var(--border-color);
+            padding: 12px 24px;
             cursor: pointer;
             font-size: 14px;
             font-weight: bold;
+            font-family: 'Arial Black', Arial, sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: var(--shadow);
+            transition: all 0.1s;
         }
 
         button:hover {
-            opacity: 0.9;
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px var(--border-color);
+        }
+
+        button:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px var(--border-color);
         }
 
         button:disabled {
@@ -189,13 +205,14 @@
         }
 
         .output-box {
-            background-color: #000;
-            border: 1px solid var(--border-color);
-            padding: 10px;
-            font-family: monospace;
+            background-color: var(--panel-bg);
+            border: 3px solid var(--border-color);
+            padding: 15px;
+            font-family: 'Courier New', monospace;
             white-space: pre-wrap;
             overflow-y: auto;
             flex: 1;
+            box-shadow: var(--shadow);
         }
 
         .error-text {
@@ -203,11 +220,12 @@
         }
 
         .ai-suggestion {
-            background-color: #2d2d30;
-            border-left: 4px solid var(--accent-color);
-            padding: 15px;
-            margin-top: 10px;
+            background-color: var(--panel-bg);
+            border: 3px solid var(--accent-color);
+            padding: 20px;
+            margin-top: 15px;
             display: none;
+            box-shadow: var(--shadow);
         }
 
         .ai-title {
@@ -221,7 +239,7 @@
 
 <body>
 
-    <h1>AI-Powered C++ Compiler (Multi-file)</h1>
+    <h1 style="font-family: 'Arial Black', Arial, sans-serif; text-transform: uppercase; letter-spacing: 2px; color: var(--accent-color); text-shadow: var(--shadow); margin-bottom: 20px;">⚡ AI C++ COMPILER ⚡</h1>
 
     <div class="container">
         <div class="editor-section">
@@ -229,7 +247,7 @@
                 <!-- Tabs will be injected here -->
                 <button class="add-tab-btn" onclick="addNewFile()">+</button>
             </div>
-            <textarea id="code" spellcheck="false" oninput="updateCurrentFileContent()"></textarea>
+            <div id="editor-container" style="flex: 1; border: 3px solid var(--border-color); box-shadow: var(--shadow);"></div>
 
             <label>Standard Input (Stdin) - 한 줄씩 입력</label>
             <textarea id="stdin" style="flex: 0 0 100px;" placeholder="프로그램에 줄바꿈으로 구분된 입력을 제공합니다.
@@ -241,6 +259,10 @@
 170.5</textarea>
 
             <div class="controls">
+                <label style="display: flex; align-items: center; gap: 8px; margin-right: 15px;">
+                    <input type="checkbox" id="aiToggle" checked style="transform: scale(1.2);">
+                    <span style="font-size: 12px; font-weight: bold;">AI 도움 활성화</span>
+                </label>
                 <button id="runBtn" onclick="runCode()">Run Code</button>
             </div>
         </div>
@@ -256,6 +278,9 @@
         </div>
     </div>
 
+    <!-- Monaco Editor Loader -->
+    <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.min.js"></script>
+
     <script>
         // State
         let files = [
@@ -265,10 +290,10 @@
             }
         ];
         let activeIndex = 0;
+        let editor = null;
 
         // UI Elements
         const tabsContainer = document.getElementById('fileTabs');
-        const codeTextarea = document.getElementById('code');
         const addBtn = document.querySelector('.add-tab-btn');
 
         function renderTabs() {
@@ -309,8 +334,10 @@
                 tabsContainer.insertBefore(tab, addBtn);
             });
 
-            // Update textarea
-            codeTextarea.value = files[activeIndex].content;
+            // Update Monaco Editor
+            if (editor) {
+                editor.setValue(files[activeIndex].content);
+            }
         }
 
         function switchTab(index) {
@@ -319,7 +346,9 @@
         }
 
         function updateCurrentFileContent() {
-            files[activeIndex].content = codeTextarea.value;
+            if (editor) {
+                files[activeIndex].content = editor.getValue();
+            }
         }
 
         function addNewFile() {
@@ -436,6 +465,61 @@
                 runBtn.innerText = "Run Code";
             }
         }
+
+        // Initialize Monaco Editor
+        require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.45.0/min/vs' } });
+
+        require(['vs/editor/editor.main'], function() {
+            // Neo Brutalism Theme
+            monaco.editor.defineTheme('neo-brutalism', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'keyword', foreground: 'FF4444', fontStyle: 'bold' },
+                    { token: 'keyword.control', foreground: 'FF6B6B', fontStyle: 'bold' },
+                    { token: 'string', foreground: '00FF88' },
+                    { token: 'number', foreground: 'FFD93D' },
+                    { token: 'type', foreground: 'FFA07A', fontStyle: 'bold' },
+                    { token: 'comment', foreground: '666666', fontStyle: 'italic' },
+                    { token: 'variable', foreground: '98D8C8' },
+                    { token: 'function', foreground: '45B7D1' },
+                    { token: 'operator', foreground: 'FFFFFF', fontStyle: 'bold' },
+                ],
+                colors: {
+                    'editor.background': '#000000',
+                    'editor.foreground': '#FFFFFF',
+                    'editor.lineHighlightBackground': '#1a1a1a',
+                    'editorCursor.foreground': '#FF6B6B',
+                    'editor.selectionBackground': '#FF6B6B60',
+                    'editorLineNumber.foreground': '#666666',
+                    'editorLineNumber.activeForeground': '#FFFFFF',
+                    'editorWidget.background': '#1a1a1a',
+                    'editorWidget.border': '#FF6B6B',
+                }
+            });
+
+            // Create Monaco Editor
+            editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: files[activeIndex].content,
+                language: 'cpp',
+                theme: 'neo-brutalism',
+                fontSize: 14,
+                fontFamily: 'JetBrains Mono, Consolas, monospace',
+                lineNumbers: 'on',
+                roundedSelection: false,
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                minimap: { enabled: false },
+                wordWrap: 'on',
+                tabSize: 4,
+                insertSpaces: true,
+            });
+
+            // Handle content changes
+            editor.onDidChangeModelContent(() => {
+                files[activeIndex].content = editor.getValue();
+            });
+        });
 
         // Initial Render
         renderTabs();
