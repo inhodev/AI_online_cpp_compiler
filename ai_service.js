@@ -21,14 +21,17 @@ async function analyzeAndFixCode(files, errorLog) {
     try {
         const genAI = new GoogleGenAI({ apiKey });
 
-        const systemInstruction = `You are an expert C++ Developer and Compiler Engineer.
-Your task is to analyze the provided C++ source code and the corresponding compiler/runtime error log.
-1. Identify the root cause of the error.
-2. Fix the code to resolve the error while preserving the original logic.
-3. Return the result in strict JSON format with the following schema:
+        const systemInstruction = `당신은 전문 C++ 개발자이자 컴파일러 엔지니어입니다.
+제공된 C++ 소스 코드와 컴파일러/런타임 오류 로그를 분석하는 것이 당신의 임무입니다.
+
+중요: 모든 응답과 설명을 한국어로 작성하세요.
+
+1. 오류의 근본 원인을 파악하세요.
+2. 원래 로직을 유지하면서 오류를 해결하는 코드를 수정하세요.
+3. 다음 스키마로 엄격한 JSON 형식으로 결과를 반환하세요:
 {
-  "fixed_files": [ { "name": "filename.cpp", "content": "fixed content" } ],
-  "explanation": "Brief explanation of the fix"
+  "fixed_files": [ { "name": "filename.cpp", "content": "수정된 내용" } ],
+  "explanation": "수정에 대한 간단한 한국어 설명"
 }`;
 
         const userPrompt = JSON.stringify({

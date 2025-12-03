@@ -110,6 +110,17 @@
             color: #fff;
         }
 
+        .tab-name {
+            cursor: text;
+            outline: none;
+            min-width: 50px;
+        }
+
+        .tab-name:focus {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
         textarea {
             background-color: var(--panel-bg);
             color: var(--text-color);
@@ -193,8 +204,14 @@
             </div>
             <textarea id="code" spellcheck="false" oninput="updateCurrentFileContent()"></textarea>
 
-            <label>Standard Input (Stdin)</label>
-            <textarea id="stdin" style="flex: 0 0 80px;" placeholder="Input for your program..."></textarea>
+            <label>Standard Input (Stdin) - 한 줄씩 입력</label>
+            <textarea id="stdin" style="flex: 0 0 100px;" placeholder="프로그램에 줄바꿈으로 구분된 입력을 제공합니다.
+예:
+홍길동
+25
+3.14">홍길동
+25
+170.5</textarea>
 
             <div class="controls">
                 <button id="runBtn" onclick="runCode()">Run Code</button>
@@ -217,15 +234,7 @@
         let files = [
             {
                 name: "main.cpp",
-                content: `#include <iostream>\n#include "util.h"\n\nint main() {\n    greet("AI Compiler");\n    return 0;\n}`
-            },
-            {
-                name: "util.h",
-                content: `#ifndef UTIL_H\n#define UTIL_H\n#include <string>\n\nvoid greet(std::string name);\n\n#endif`
-            },
-            {
-                name: "util.cpp",
-                content: `#include <iostream>\n#include "util.h"\n\nvoid greet(std::string name) {\n    std::cout << "Hello, " << name << "!" << std::endl;\n}`
+                content: `#include <iostream>\n#include <string>\n\nint main() {\n    std::string name;\n    int age;\n    double height;\n\n    std::cout << "이름을 입력하세요: ";\n    std::cin >> name;\n    std::cout << "나이를 입력하세요: ";\n    std::cin >> age;\n    std::cout << "키를 입력하세요: ";\n    std::cin >> height;\n\n    std::cout << "\\n=== 입력 결과 ===" << std::endl;\n    std::cout << "이름: " << name << std::endl;\n    std::cout << "나이: " << age << "세" << std::endl;\n    std::cout << "키: " << height << "cm" << std::endl;\n\n    return 0;\n}`
             }
         ];
         let activeIndex = 0;
@@ -247,6 +256,15 @@
 
                 const nameSpan = document.createElement('span');
                 nameSpan.innerText = file.name;
+                nameSpan.className = 'tab-name';
+                nameSpan.contentEditable = 'true';
+                nameSpan.onblur = () => handleTabNameChange(index, nameSpan);
+                nameSpan.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        nameSpan.blur();
+                    }
+                };
                 tab.appendChild(nameSpan);
 
                 // Close button (prevent closing the last file)
@@ -278,17 +296,36 @@
         }
 
         function addNewFile() {
-            const name = prompt("Enter file name (e.g., helper.cpp):");
-            if (name) {
-                // Check duplicate
-                if (files.some(f => f.name === name)) {
-                    alert("File already exists!");
-                    return;
-                }
-                files.push({ name: name, content: "" });
-                activeIndex = files.length - 1;
-                renderTabs();
+            // Generate unique filename like "example.cpp", "example2.cpp", etc.
+            let baseName = 'example';
+            let extension = 'cpp';
+            let counter = 1;
+            let newName = `${baseName}.${extension}`;
+
+            // Find unique name
+            while (files.some(f => f.name === newName)) {
+                counter++;
+                newName = `${baseName}${counter}.${extension}`;
             }
+
+            files.push({ name: newName, content: "" });
+            activeIndex = files.length - 1;
+            renderTabs();
+
+            // Focus on the new tab name for editing
+            setTimeout(() => {
+                const tabNames = document.querySelectorAll('.tab-name');
+                const newTabName = tabNames[activeIndex];
+                if (newTabName) {
+                    newTabName.focus();
+                    // Select all text for easy replacement
+                    const range = document.createRange();
+                    range.selectNodeContents(newTabName);
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+            }, 0);
         }
 
         function closeFile(index) {
@@ -299,6 +336,26 @@
                 }
                 renderTabs();
             }
+        }
+
+        function handleTabNameChange(index, nameElement) {
+            const newName = nameElement.innerText.trim();
+
+            // Check if name is empty
+            if (!newName) {
+                nameElement.innerText = files[index].name;
+                return;
+            }
+
+            // Check for duplicate names (excluding current file)
+            if (files.some((f, i) => i !== index && f.name === newName)) {
+                alert("File name already exists!");
+                nameElement.innerText = files[index].name;
+                return;
+            }
+
+            // Update file name
+            files[index].name = newName;
         }
 
         async function runCode() {

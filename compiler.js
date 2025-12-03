@@ -34,15 +34,22 @@ async function compileAndRun(sourceDir, stdinInput = '') {
             // 'timeout' 명령어를 사용하여 무한 루프 방지 (5초 제한)
             const runCmd = `./${outputFile}`;
 
-            // Combine: cd to directory -> compile -> (echo input | run)
-            // 사용자 입력값(Stdin)에 있는 쌍따옴표 이스케이프 처리
-            const safeInput = stdinInput.replace(/"/g, '\\"');
+            // Combine: cd to directory -> compile -> (input | run)
+            // 여러 줄 입력을 지원하기 위해 echo -e 사용
+            let inputCommand;
+            if (stdinInput.trim()) {
+                // 개행문자를 \n으로 변환하고 따옴표 이스케이프
+                const escapedInput = stdinInput.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+                inputCommand = `echo -e '${escapedInput}' | `;
+            } else {
+                inputCommand = '';
+            }
 
             // 최종 쉘 명령어 조합
             // 1. 해당 폴더로 이동 (cd)
             // 2. 컴파일 실행 (&& g++ ...)
-            // 3. 성공 시 입력값 주입하여 실행 (&& echo ... | timeout ...)
-            const shellCommand = `cd "${sourceDir}" && ${compileCmd} && echo "${safeInput}" | timeout 5s ${runCmd}`;
+            // 3. 성공 시 입력값 주입하여 실행 (&& echo -e ... | timeout ...)
+            const shellCommand = `cd "${sourceDir}" && ${compileCmd} && ${inputCommand}timeout 5s ${runCmd}`;
 
             // 3. Execute
             exec(shellCommand, (error, stdout, stderr) => {
