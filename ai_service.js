@@ -21,18 +21,8 @@ async function analyzeAndFixCode(files, errorLog) {
     try {
         const genAI = new GoogleGenAI({ apiKey });
 
-        const systemInstruction = `당신은 전문 C++ 개발자이자 컴파일러 엔지니어입니다.
-제공된 C++ 소스 코드와 컴파일러/런타임 오류 로그를 분석하는 것이 당신의 임무입니다.
-
-중요: 모든 응답과 설명을 한국어로 작성하세요.
-
-1. 오류의 근본 원인을 파악하세요.
-2. 원래 로직을 유지하면서 오류를 해결하는 코드를 수정하세요.
-3. 다음 스키마로 엄격한 JSON 형식으로 결과를 반환하세요:
-{
-  "fixed_files": [ { "name": "filename.cpp", "content": "수정된 내용" } ],
-  "explanation": "수정에 대한 간단한 한국어 설명"
-}`;
+        // 토큰 사용량 최적화를 위해 간단한 시스템 프롬프트 사용
+        const systemInstruction = `C++ 컴파일 에러를 분석하고 수정하세요. JSON 형식으로 응답: {"fixed_files": [{"name": "file.cpp", "content": "fixed code"}], "explanation": "설명"}`;
 
         const userPrompt = JSON.stringify({
             files: files,

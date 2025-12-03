@@ -57,10 +57,27 @@
             background-color: var(--panel-bg);
             padding: 5px 5px 0 5px;
             border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+            max-width: 100%;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) transparent;
+        }
+
+        .file-tabs::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .file-tabs::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .file-tabs::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
         }
 
         .tab {
-            padding: 8px 15px;
+            padding: 8px 12px;
             background-color: var(--tab-inactive);
             color: #888;
             cursor: pointer;
@@ -70,6 +87,9 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            min-width: 80px;
+            max-width: 150px;
+            flex-shrink: 0;
         }
 
         .tab.active {
@@ -114,11 +134,18 @@
             cursor: text;
             outline: none;
             min-width: 50px;
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .tab-name:focus {
             background-color: rgba(255, 255, 255, 0.1);
             border-radius: 3px;
+            max-width: none;
+            overflow: visible;
+            text-overflow: clip;
         }
 
         textarea {
@@ -254,6 +281,18 @@
                 tab.className = `tab ${index === activeIndex ? 'active' : ''}`;
                 tab.onclick = () => switchTab(index);
 
+                // Close button first (always visible)
+                if (files.length > 1) {
+                    const closeBtn = document.createElement('span');
+                    closeBtn.className = 'close-tab';
+                    closeBtn.innerHTML = '&times;';
+                    closeBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        closeFile(index);
+                    };
+                    tab.appendChild(closeBtn);
+                }
+
                 const nameSpan = document.createElement('span');
                 nameSpan.innerText = file.name;
                 nameSpan.className = 'tab-name';
@@ -266,18 +305,6 @@
                     }
                 };
                 tab.appendChild(nameSpan);
-
-                // Close button (prevent closing the last file)
-                if (files.length > 1) {
-                    const closeBtn = document.createElement('span');
-                    closeBtn.className = 'close-tab';
-                    closeBtn.innerHTML = '&times;';
-                    closeBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        closeFile(index);
-                    };
-                    tab.appendChild(closeBtn);
-                }
 
                 tabsContainer.insertBefore(tab, addBtn);
             });
